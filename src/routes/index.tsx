@@ -1,15 +1,15 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 
 import Login from '../pages/loginPage'
-import { AdmPage } from '../pages/admPage'
-import { GarcomPage } from '../pages/garcomPage'
-import { GarcomCategoria } from '../pages/garcomCategoria'
+import { AdmPage } from '../pages/adm/admPage'
+import { GarcomPage } from '../pages/garcom/garcomPage'
+import { GarcomCategoria } from '../pages/garcom/garcomCategoria'
 
-import { AdmLayout } from '../pages/admLayout'
-import { AdmPedidos } from '../pages/admPedidos'
-import { AdmGarcom } from '../pages/admGarcom'
-import { AdmCardapio } from '../pages/admCardapio'
-import { AdmConfig } from '../pages/admConfig'
+import { AdmLayout } from '../pages/adm/admLayout'
+import { AdmPedidos } from '../pages/adm/admPedidos'
+import { AdmGarcom } from '../pages/adm/admGarcom'
+import { AdmCardapio } from '../pages/adm/admCardapio'
+import { AdmConfig } from '../pages/adm/admConfig'
 
 export const AppRoutes = () => (
   <BrowserRouter>

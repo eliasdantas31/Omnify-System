@@ -1,94 +1,49 @@
 <?php
+// models/User.php
 
 class User
 {
-  private $conn;
-  private $table = "Users";
+    private PDO $conn;
+    private string $table = "Users";
 
-  public $id;
-  public $email;
-  public $password;
-  public $admin;
+    public function __construct(PDO $db)
+    {
+        $this->conn = $db;
+    }
 
-  public function __construct($db)
-  {
-    $this->conn = $db;
-  }
+    public function findByEmail(string $email): ?array
+    {
+        $sql = "SELECT id, email, password, role FROM {$this->table} WHERE email = :email LIMIT 1";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindValue(':email', $email, PDO::PARAM_STR);
+        $stmt->execute();
 
-  public function getAll()
-  {
-    $sql = "SELECT id, email, admin FROM $this->table ORDER BY email ASC";
+        $user = $stmt->fetch();
+        return $user ?: null;
+    }
 
-    $stmt = $this->conn->prepare($sql);
-    $stmt->execute();
+    /**
+     * Tenta logar com email e senha.
+     * Retorna o usuário (sem o hash) se ok, ou null se inválido.
+     */
+    public function login(string $email, string $password): ?array
+    {
+        $user = $this->findByEmail($email);
 
-    return $stmt;
-  }
+        if (!$user) {
+            return null;
+        }
 
-  public function getById()
-  {
-    $sql = "SELECT id, email, admin
-                FROM $this->table
-                WHERE id = :id
-                LIMIT 1";
+        // password_verify compara a senha enviada com o hash salvo
+        if (!password_verify($password, $user['password'])) {
+            return null;
+        }
 
-    $stmt = $this->conn->prepare($sql);
-    $stmt->bindParam(":id", $this->id);
-    $stmt->execute();
-
-    return $stmt->fetch(PDO::FETCH_ASSOC);
-  }
-
-  public function create()
-  {
-    $sql = "INSERT INTO $this->table (email, password, admin)
-                VALUES (:email, :password, :admin)";
-
-    $stmt = $this->conn->prepare($sql);
-
-    $stmt->bindParam(":email", $this->email);
-    $stmt->bindParam(":password", $this->password);
-    $stmt->bindParam(":admin", $this->admin);
-
-    return $stmt->execute();
-  }
-
-  public function update()
-  {
-    $sql = "UPDATE $this->table
-                SET email = :email,
-                    password = :password,
-                    admin = :admin
-                WHERE id = :id";
-
-    $stmt = $this->conn->prepare($sql);
-
-    $stmt->bindParam(":email", $this->email);
-    $stmt->bindParam(":password", $this->password);
-    $stmt->bindParam(":admin", $this->admin);
-    $stmt->bindParam(":id", $this->id);
-
-    return $stmt->execute();
-  }
-
-  public function delete()
-  {
-    $sql = "DELETE FROM $this->table WHERE id = :id";
-
-    $stmt = $this->conn->prepare($sql);
-    $stmt->bindParam(":id", $this->id);
-
-    return $stmt->execute();
-  }
-
-  public function getByEmail()
-  {
-    $sql = "SELECT * FROM $this->table WHERE email = :email LIMIT 1";
-
-    $stmt = $this->conn->prepare($sql);
-    $stmt->bindParam(":email", $this->email);
-    $stmt->execute();
-
-    return $stmt->fetch(PDO::FETCH_ASSOC);
-  }
+        // Sanitiza o retorno (não expor hash)
+        return [
+            'id'    => (int)$user['id'],
+            'email' => $user['email'],
+            'role'  => $user['role'], // 'A', 'G', 'U' (ou 'g')
+        ];
+    }
 }

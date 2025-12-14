@@ -1,5 +1,5 @@
 import styled from 'styled-components'
-import { mainTheme as theme } from '../../styles/theme'
+import { mainTheme as theme } from '../../../styles/theme'
 
 const { colors } = theme
 

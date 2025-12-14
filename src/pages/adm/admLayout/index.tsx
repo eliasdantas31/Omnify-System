@@ -1,8 +1,8 @@
 import { Outlet } from 'react-router-dom'
 import { Container, Content, PageWrapper } from './style'
 
-import { MenuComponent } from '../../components/MenuComponet'
-import { Footer } from '../../components/Footer'
+import { MenuComponent } from '../../../components/MenuComponet'
+import { Footer } from '../../../components/Footer'
 
 export const AdmLayout = () => {
   return (
