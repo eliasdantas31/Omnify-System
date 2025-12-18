@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Container,
   Item,
@@ -6,7 +7,6 @@ import {
   PedidosContainer,
   PedidosContent,
   PedidosMenu,
-  PedidosOptions,
   SearchBar
 } from './style'
 
@@ -15,24 +15,50 @@ interface OrderType {
   tableName: string
   created_at: string
   status: 'open' | 'closed' | 'finished'
+  total: number
 }
 
 export const AdmPedidos = () => {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const stored = localStorage.getItem('user')
+    if (!stored) {
+      navigate('/loginPage')
+      return
+    }
+
+    const user = JSON.parse(stored)
+    if (user.role !== 'A') {
+      navigate('/loginPage')
+    }
+  }, [navigate])
+
   const [orders, setOrders] = useState<OrderType[]>([])
   const [search, setSearch] = useState('')
+
+  // Endpoint único do backend
+  const API_PEDIDOS = 'http://localhost/pic/admPedidos.php'
 
   // =============================
   // FETCH ORDERS
   // =============================
   const fetchOrders = () => {
-    fetch('http://localhost/pic/public/index.php/orders')
+    fetch(`${API_PEDIDOS}?action=list_orders`)
       .then((res) => res.json())
       .then((data) => {
-        const normalized = data.map((order: any) => ({
+        if (!data.success) {
+          console.error('Erro ao carregar pedidos:', data.message)
+          return
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const normalized = data.orders.map((order: any) => ({
           id: order.id,
-          tableName: order.table_or_client, // <- corrigido
+          tableName: order.table_or_client,
           created_at: order.created_at,
-          status: order.status
+          status: order.status,
+          total: order.total
         }))
 
         console.log('PEDIDOS NORMALIZADOS:', normalized)
@@ -48,13 +74,24 @@ export const AdmPedidos = () => {
     id: number,
     newStatus: 'open' | 'closed' | 'finished'
   ) => {
-    fetch(`http://localhost/pic/public/index.php/orders/status/${id}`, {
+    fetch(API_PEDIDOS, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus })
+      body: JSON.stringify({
+        action: 'update_status',
+        id,
+        status: newStatus
+      })
     })
       .then((res) => res.json())
-      .then(() => fetchOrders())
+      .then((data) => {
+        if (data.success) {
+          alert('Status atualizado com sucesso!')
+          fetchOrders()
+        } else {
+          alert(data.message || 'Erro ao atualizar status')
+        }
+      })
       .catch((err) => console.error('Erro ao atualizar status:', err))
   }
 
@@ -62,11 +99,25 @@ export const AdmPedidos = () => {
   // DELETE ORDER
   // =============================
   const deleteOrder = (id: number) => {
-    fetch(`http://localhost/pic/public/index.php/orders/delete/${id}`, {
-      method: 'DELETE'
+    if (!confirm('Tem certeza que deseja excluir este pedido?')) return
+
+    fetch(API_PEDIDOS, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'delete_order',
+        id
+      })
     })
       .then((res) => res.json())
-      .then(() => fetchOrders())
+      .then((data) => {
+        if (data.success) {
+          alert('Pedido excluído com sucesso!')
+          fetchOrders()
+        } else {
+          alert(data.message || 'Erro ao excluir pedido')
+        }
+      })
       .catch((err) => console.error('Erro ao excluir pedido:', err))
   }
 
@@ -121,7 +172,7 @@ export const AdmPedidos = () => {
 
                 <div className="pedidoInfo">
                   <p>Valor Total:</p>
-                  <span>R$ 0</span>
+                  <span>R$ {order.total.toFixed(2)}</span>
                 </div>
 
                 <hr />
@@ -157,7 +208,7 @@ export const AdmPedidos = () => {
 
                 <div className="pedidoInfo">
                   <p>Valor Total:</p>
-                  <span>R$ 0</span>
+                  <span>R$ {order.total.toFixed(2)}</span>
                 </div>
 
                 <hr />
@@ -191,7 +242,7 @@ export const AdmPedidos = () => {
 
                 <div className="pedidoInfo">
                   <p>Valor Total:</p>
-                  <span>R$ 0</span>
+                  <span>R$ {order.total.toFixed(2)}</span>
                 </div>
 
                 <hr />

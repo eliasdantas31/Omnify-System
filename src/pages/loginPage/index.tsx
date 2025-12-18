@@ -17,59 +17,59 @@ const Login = () => {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
-  // Caminho relativo para o backend PHP
-  // Em produção: https://seu-dominio.com.br/pic/login.php
-  // Em dev (se React e PHP estiverem no mesmo domínio): http://localhost/pic/login.php
+  // Ideal: depois trocar para variável de ambiente (VITE_API_URL, por ex.)
   const API_LOGIN_URL = 'http://localhost/pic/login.php'
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault() // impede o refresh da página
-    setError('') // limpa erro anterior
-
-    // usuario teste admin
-    // admin@admin.com / admin123
-    // usuario teste garcom
-    // garcom@garcom.com / garcom123
+    e.preventDefault()
+    setError('')
 
     try {
       const response = await fetch(API_LOGIN_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // se você quiser que a sessão PHP funcione por cookie:
+        // credentials: 'include',
         body: JSON.stringify({ email, password })
       })
 
       const result = await response.json()
       console.log('Console.log result', result)
 
-      // Se o backend retornou status de erro (400, 401, 500, etc) ou não tem user
       if (!response.ok || !result.user) {
         const msg = result.message || 'Usuário ou senha incorretos'
         setError(msg)
-        alert(msg) // ALERTA DE ERRO
+        alert(msg)
         return
       }
 
       // user esperado do backend:
-      // { id: number, email: string, role: 'A' | 'G' | 'U' }
+      // { id: number, email: string, role: 'A' | 'G' | 'U' | 'M' }
       localStorage.setItem('user', JSON.stringify(result.user))
 
-      const role = result.user.role
+      const role = result.user.role as 'A' | 'G' | 'U' | 'M' | string
 
+      // Se o backend enviou redirectTo, respeita:
+      if (result.redirectTo) {
+        navigate(result.redirectTo)
+        return
+      }
+
+      // Fallback se por algum motivo não vier redirectTo:
       if (role === 'A') {
-        // Admin
         navigate('/adm')
       } else if (role === 'G') {
-        // Garçom
         navigate('/garcom')
+      } else if (role === 'M') {
+        navigate('/cadastroGeral') // Manager -> página de cadastro geral
       } else {
-        // Usuário comum (U) ou qualquer outro fallback
         navigate('/usuario')
       }
     } catch (err) {
       console.error(err)
       const msg = 'Erro ao conectar com o servidor'
       setError(msg)
-      alert(msg) // ALERTA DE ERRO DE CONEXÃO
+      alert(msg)
     }
   }
 
@@ -81,7 +81,6 @@ const Login = () => {
         </LoginLogo>
 
         <h1>Bem-vindo ao BaitaKão</h1>
-        {/* importante: usar onSubmit e o botão type="submit" */}
         <form onSubmit={handleSubmit}>
           <label htmlFor="email">E-mail:</label>
           <LoginInput

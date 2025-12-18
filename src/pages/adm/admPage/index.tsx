@@ -1,4 +1,5 @@
 import { Container, OptionsContainer, OptionCard } from './style'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Header } from '../../../components/Header'
@@ -6,6 +7,19 @@ import { Footer } from '../../../components/Footer'
 
 export const AdmPage = () => {
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const stored = localStorage.getItem('user')
+    if (!stored) {
+      navigate('/loginPage')
+      return
+    }
+
+    const user = JSON.parse(stored)
+    if (user.role !== 'A') {
+      navigate('/loginPage')
+    }
+  }, [navigate])
 
   return (
     <Container>

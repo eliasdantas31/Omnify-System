@@ -7,27 +7,27 @@ USE PICDB;
 
 -- ============================================
 -- TABELA DE USUÁRIOS
--- A = Admin | G = Garçom | U = Usuário comum
+-- A = Admin | G = Garçom | U = Usuário comum | M = Manager
 -- ============================================
 CREATE TABLE IF NOT EXISTS Users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    role ENUM('A','G','U') NOT NULL DEFAULT 'U'
+    role ENUM('A','G','U','M') NOT NULL DEFAULT 'U'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- USUÁRIO ADMIN PADRÃO (se não existir)
--- admin@admin.com / admin123  -> role 'A'
+-- USUÁRIO MANAGER (se não existir)
+-- limaleiteelias99@gmail.com / 310107El!as  -> role 'M'
 -- ============================================
 INSERT INTO Users (email, password, role)
 SELECT
-    'adminelias@baitakao.com.br',
-    -- hash de "admin123"
-    '$2y$10$mwb1m5XsvwBroQGv9G87keHCakL88nA7xdbIOxupbS2A.qxlL0zy2',
-    'A'
+    'limaleiteelias99@gmail.com',
+    -- hash de "310107El!as"
+    '$2y$10$UVLcGo66aCNoRrJXB9.h.OzBqn8DlOCqG9ID4HLLPjT.8yd7iJYm2',
+    'M'
 WHERE NOT EXISTS (
-    SELECT 1 FROM Users WHERE email = 'adminelias@baitakao.com.br'
+    SELECT 1 FROM Users WHERE email = 'limaleiteelias99@gmail.com'
 );
 
 -- ============================================
@@ -88,7 +88,8 @@ CREATE TABLE IF NOT EXISTS OrderItems (
     orderId INT NOT NULL,
     itemId INT NOT NULL,
     quantity INT NOT NULL,
-    observation VARCHAR(255),
+    price FLOAT NOT NULL,
+    observations TEXT,
 
     CONSTRAINT fk_orderitems_order
         FOREIGN KEY (orderId)

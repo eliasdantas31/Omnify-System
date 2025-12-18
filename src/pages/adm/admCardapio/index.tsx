@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   CardapioMenu,
   CardapioOptions,
@@ -35,6 +36,21 @@ interface CategoryType {
 }
 
 export const AdmCardapio = () => {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const stored = localStorage.getItem('user')
+    if (!stored) {
+      navigate('/loginPage')
+      return
+    }
+
+    const user = JSON.parse(stored)
+    if (user.role !== 'A') {
+      navigate('/loginPage')
+    }
+  }, [navigate])
+
   const [categories, setCategories] = useState<CategoryType[]>([])
   const [openCategories, setOpenCategories] = useState<number[]>([])
   const [showCategory, setShowCategory] = useState(false)
@@ -51,14 +67,18 @@ export const AdmCardapio = () => {
   const [editItemName, setEditItemName] = useState('')
   const [editItemPrice, setEditItemPrice] = useState('')
 
+  // URL única do backend
+  const API_CARDAPIO = 'http://localhost/pic/admCardapio.php'
+
   useEffect(() => {
     fetchCategories()
   }, [])
 
   const fetchCategories = () => {
-    fetch('http://localhost/pic/public/index.php/category/menu')
+    fetch(`${API_CARDAPIO}?action=list_menu`)
       .then((res) => res.json())
       .then((data) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const normalized = data.map((cat: any) => ({
           ...cat,
           items: cat.items || [],
@@ -79,14 +99,17 @@ export const AdmCardapio = () => {
   const handleCreateCategory = () => {
     if (!newCategoryName.trim()) return alert('Nome é obrigatório')
 
-    fetch('http://localhost/pic/public/index.php/category/create', {
+    fetch(API_CARDAPIO, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newCategoryName })
+      body: JSON.stringify({
+        action: 'create_category',
+        name: newCategoryName
+      })
     })
       .then((res) => res.json())
       .then((data) => {
-        alert(data.message)
+        alert(data.message || 'Operação concluída')
         setShowCategory(false)
         setNewCategoryName('')
         fetchCategories()
@@ -102,10 +125,11 @@ export const AdmCardapio = () => {
     const price = parseFloat(newItemPrice)
     if (isNaN(price)) return alert('Preço inválido')
 
-    fetch('http://localhost/pic/public/index.php/categoryItem/create', {
+    fetch(API_CARDAPIO, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        action: 'create_item',
         categoryId: selectedCategoryId,
         name: newItemName,
         price
@@ -113,7 +137,7 @@ export const AdmCardapio = () => {
     })
       .then((res) => res.json())
       .then((data) => {
-        alert(data.message)
+        alert(data.message || 'Operação concluída')
         setShowItem(false)
         setNewItemName('')
         setNewItemPrice('')
@@ -136,21 +160,20 @@ export const AdmCardapio = () => {
     const price = parseFloat(editItemPrice)
     if (isNaN(price)) return alert('Preço inválido')
 
-    fetch(
-      `http://localhost/pic/public/index.php/categoryItem/update/${editItem.id}`,
-      {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          categoryId: editItem.categoryId,
-          name: editItemName,
-          price: price
-        })
-      }
-    )
+    fetch(API_CARDAPIO, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update_item',
+        id: editItem.id,
+        categoryId: editItem.categoryId,
+        name: editItemName,
+        price
+      })
+    })
       .then((res) => res.json())
       .then((data) => {
-        alert(data.message)
+        alert(data.message || 'Operação concluída')
         setEditItem(null)
         setEditItemName('')
         setEditItemPrice('')
@@ -161,34 +184,42 @@ export const AdmCardapio = () => {
 
   const deletarCategoria = async (categoryId: number) => {
     try {
-      const response = await fetch(
-        `http://localhost/pic/public/index.php/category/delete/${categoryId}`,
-        {
-          method: 'DELETE'
-        }
-      )
+      const response = await fetch(API_CARDAPIO, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete_category',
+          id: categoryId
+        })
+      })
 
-      if (!response.ok) {
-        throw new Error('Erro ao deletar categoria')
+      const data = await response.json()
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Erro ao deletar categoria')
       }
 
       setCategories((prev) => prev.filter((cat) => cat.id !== categoryId))
+      alert('Categoria deletada com sucesso!')
     } catch (err) {
       console.error('Erro ao apagar categoria:', err)
+      alert('Erro ao apagar categoria')
     }
   }
 
   const deletarItem = async (itemId: number, categoryId: number) => {
     try {
-      const response = await fetch(
-        `http://localhost/pic/public/index.php/categoryItem/delete/${itemId}`,
-        {
-          method: 'DELETE'
-        }
-      )
+      const response = await fetch(API_CARDAPIO, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete_item',
+          id: itemId
+        })
+      })
 
-      if (!response.ok) {
-        throw new Error('Erro ao deletar item')
+      const data = await response.json()
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Erro ao deletar item')
       }
 
       setCategories((prev) =>
@@ -198,8 +229,10 @@ export const AdmCardapio = () => {
             : cat
         )
       )
+      alert('Item deletado com sucesso!')
     } catch (err) {
       console.error('Erro ao apagar item:', err)
+      alert('Erro ao apagar item')
     }
   }
 
@@ -365,17 +398,13 @@ export const AdmCardapio = () => {
             <input
               type="text"
               value={editItemName}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setEditItemName(e.target.value)
-              }
+              onChange={(e) => setEditItemName(e.target.value)}
               placeholder="Nome do item"
             />
             <input
               type="number"
               value={editItemPrice}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setEditItemPrice(e.target.value)
-              }
+              onChange={(e) => setEditItemPrice(e.target.value)}
               placeholder="Preço do item"
             />
             <div>

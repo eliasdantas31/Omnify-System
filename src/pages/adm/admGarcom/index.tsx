@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Container,
   HeaderLine,
@@ -15,13 +16,26 @@ import {
 interface User {
   id: number
   email: string
-  password: string
+  role: string // 'G'
 }
 
 export const AdmGarcom = () => {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const stored = localStorage.getItem('user')
+    if (!stored) {
+      navigate('/loginPage')
+      return
+    }
+
+    const user = JSON.parse(stored)
+    if (user.role !== 'A') {
+      navigate('/loginPage')
+    }
+  }, [navigate])
+
   const [showForm, setShowForm] = useState(false)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [garcons, setGarcons] = useState<{ email: string }[]>([]) // (ainda não usado)
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [user, setUser] = useState<User[]>([])
@@ -29,32 +43,39 @@ export const AdmGarcom = () => {
   const [showConfirm, setShowConfirm] = useState(false)
   const [garcomToDelete, setGarcomToDelete] = useState<number | null>(null)
 
-  // estado da barra de pesquisa
   const [search, setSearch] = useState('')
+
+  // Endpoint único do backend
+  const API_GARCOM = 'http://localhost/pic/admGarcom.php'
+  // Em produção você pode trocar para '/pic/admGarcom.php' se React e PHP estiverem no mesmo domínio
 
   const handleAdd = () => {
     if (!email || !senha) {
       return alert('Preencha todos os campos!')
     }
 
-    fetch('http://localhost/pic/public/index.php/users/create', {
+    fetch(API_GARCOM, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        action: 'create_garcom',
         email,
-        password: senha,
-        admin: 'N'
+        password: senha
       })
     })
-      .then((res) => {
-        if (!res.ok) throw new Error('Erro ao adicionar garçom')
-        return res.json()
-      })
-      .then((novoUser: User) => {
+      .then((res) => res.json())
+      .then((result) => {
+        if (!result.success) {
+          alert(result.message || 'Erro ao adicionar garçom')
+          return
+        }
+
+        const novoUser: User = result.user
         setUser((prev) => [...prev, novoUser])
         setEmail('')
         setSenha('')
         setShowForm(false)
+        alert('Garçom criado com sucesso!')
       })
       .catch((err) => {
         console.log(err)
@@ -65,9 +86,14 @@ export const AdmGarcom = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await fetch('http://localhost/pic/public/index.php/users')
-        const data: User[] = await res.json()
-        setUser(data)
+        const res = await fetch(`${API_GARCOM}?action=list_users`)
+        const data = await res.json()
+
+        if (data.success) {
+          setUser(data.users)
+        } else {
+          console.log('Erro ao buscar usuários:', data.message)
+        }
       } catch (err) {
         console.log(err)
       }
@@ -76,25 +102,33 @@ export const AdmGarcom = () => {
     fetchUsers()
   }, [])
 
-  const askDelete = (index: number) => {
-    setGarcomToDelete(index)
+  const askDelete = (id: number) => {
+    setGarcomToDelete(id)
     setShowConfirm(true)
   }
 
   const confirmDelete = () => {
     if (garcomToDelete === null) return
 
-    fetch(
-      `http://localhost/pic/public/index.php/users/delete/${garcomToDelete}`,
-      {
-        method: 'DELETE'
-      }
-    )
-      .then((res) => {
-        if (!res.ok) throw new Error('Erro ao excluir garçom')
+    fetch(API_GARCOM, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'delete_user',
+        id: garcomToDelete
+      })
+    })
+      .then((res) => res.json())
+      .then((result) => {
+        if (!result.success) {
+          alert(result.message || 'Erro ao excluir garçom')
+          return
+        }
+
         setUser((prev) => prev.filter((u) => u.id !== garcomToDelete))
         setShowConfirm(false)
         setGarcomToDelete(null)
+        alert('Garçom excluído com sucesso!')
       })
       .catch((err) => {
         console.log(err)
@@ -102,7 +136,6 @@ export const AdmGarcom = () => {
       })
   }
 
-  // lista filtrada pela searchbar
   const filteredUsers = user.filter((u) =>
     u.email.toLowerCase().includes(search.toLowerCase().trim())
   )
@@ -169,7 +202,6 @@ export const AdmGarcom = () => {
         ))}
       </GarcomList>
 
-      {/* POP-UP DE CONFIRMAÇÃO */}
       {showConfirm && (
         <ConfirmOverlay>
           <ConfirmBox>
